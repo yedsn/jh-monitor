@@ -195,6 +195,8 @@ class host_api:
         detail = host_detail or host_status_mapper_utils.buildHostDetailFromStatusDoc(host_row, None)
         row = dict(host_row)
         row.update({
+            'host_name': detail.get('host_name', ''),
+            'host_remark': detail.get('host_remark', host_row.get('host_name', '')),
             'host_status': detail.get('host_status', 'Stopped'),
             'host_info': detail.get('host_info', '{}'),
             'cpu_info': detail.get('cpu_info', '{}'),
@@ -355,10 +357,10 @@ class host_api:
 
     def updateHostNameApi(self):
         host_id = request.form.get('host_id', '')
-        host_name = request.form.get('host_name', '')
+        host_name = request.form.get('host_remark', request.form.get('host_name', ''))
         
         jh.M('host').where('host_id=?', (host_id,)).setField('host_name', host_name)
-        return jh.returnJson(True, '主机名称修改成功!')
+        return jh.returnJson(True, '备注名称修改成功!')
 
     def changeHostGroupApi(self):
         host_id = request.form.get('host_id', '')
@@ -439,6 +441,7 @@ class host_api:
             report_date = time.strftime('%Y-%m-%d', time.localtime(now_ts))
             window = analyser.get_report_window(report_date)
             raw_groups = analyser.load_raw_groups([host_row], window)
+            host_row = analyser._resolve_report_host_rows([host_row], raw_groups)[0]
             host_group = raw_groups.get(host_id, {'status': [], 'xtrabackup': [], 'xtrabackup_inc': [], 'backup': []})
             doc_id, document = analyser.build_single_host_report(host_row, host_group, window)
             analyser._save_report_document(SINGLE_REPORT_INDEX, doc_id, document)
@@ -523,9 +526,11 @@ class host_api:
 
     def getClientInstallShellLanApi(self):
         server_ip = jh.getHostAddr()
+        monitor_url = 'http://{0}:10844'.format(server_ip)
         es_addresses = self._getClientEsAddresses()
         github_script_url = "https://raw.githubusercontent.com/jianghujs/jh-monitor/master/scripts/client/install.sh"
         gitee_script_url = "https://gitee.com/jianghujs/jh-monitor/raw/master/scripts/client/install.sh"
+        server_script_url = monitor_url + '/pub/get_client_script?path=install.sh'
         es_env = ''
         if es_addresses:
             es_env = 'JH_MONITOR_ES_ADDR={0} '.format(shlex.quote(','.join(es_addresses)))
@@ -538,11 +543,16 @@ class host_api:
                 command += ' cn'
             return command
 
+        def build_server_command(action, cn=False):
+            return build_command(shlex.quote(server_script_url), action, cn)
+
         return jh.returnJson(True, 'ok', {
-            'github': build_command(github_script_url, 'install'),
-            'gitee': build_command(gitee_script_url, 'install', True),
-            'github_update': build_command(github_script_url, 'update'),
-            'gitee_update': build_command(gitee_script_url, 'update', True)
+            'github': build_server_command('install'),
+            'gitee': build_server_command('install', True),
+            'github_update': build_server_command('update'),
+            'gitee_update': build_server_command('update', True),
+            'fallback_github': build_command(github_script_url, 'install'),
+            'fallback_gitee': build_command(gitee_script_url, 'install', True)
         })
 
     def alarmApi(self):

@@ -38,7 +38,7 @@ def main():
         api._getClientEsAddresses = original_get_host_addr
         jh.getHostAddr = original_jh_get_host_addr
     assert result['data']['gitee'] == (
-        'wget -O /tmp/install.sh https://gitee.com/jianghujs/jh-monitor/raw/master/scripts/client/install.sh && '
+        "wget -O /tmp/install.sh 'http://127.0.0.1:10844/pub/get_client_script?path=install.sh' && "
         'JH_MONITOR_ES_ADDR=https://es.example.com:9200 '
         'bash /tmp/install.sh install http://127.0.0.1:10844 cn'
     ), result

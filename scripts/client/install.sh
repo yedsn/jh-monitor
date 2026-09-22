@@ -247,9 +247,27 @@ resolve_monitor_server_env() {
 config_filebeat() {
     resolve_monitor_server_env
     export JH_MONITOR_HOST_ID_FILE="$HOST_ID_FILE"
+    export MONITOR_SERVER_URL="$monitor_url"
+    local monitor_installer="/tmp/install_filebeat.monitor.$$"
+    local monitor_headers="/tmp/install_filebeat.headers.$$"
     echo "开始下载最新 filebeat 安装脚本..."
-    if wget -O /tmp/install_filebeat.sh "${RAW_BASE}/scripts/client/install/filebeat/install.sh"; then
-        bash /tmp/install_filebeat.sh "$net_env_cn"
+    if [ -n "$monitor_url" ] && curl -fsSLG \
+        --data-urlencode "path=install/filebeat/install.sh" \
+        "${monitor_url%/}/pub/get_client_script" \
+        -D "$monitor_headers" \
+        -o "$monitor_installer" && \
+        grep -qi '^Content-Type: text/plain' "$monitor_headers" && \
+        [ -s "$monitor_installer" ]; then
+        mv -f "$monitor_installer" /tmp/install_filebeat.sh
+        echo "已从云监控服务端获取 filebeat 安装脚本。"
+    elif ! wget -O /tmp/install_filebeat.sh "${RAW_BASE}/scripts/client/install/filebeat/install.sh"; then
+        rm -f "$monitor_installer" "$monitor_headers"
+        return 1
+    fi
+    rm -f "$monitor_installer" "$monitor_headers"
+
+    if [ -s /tmp/install_filebeat.sh ]; then
+        MONITOR_SERVER_URL="$monitor_url" bash /tmp/install_filebeat.sh "$net_env_cn"
         return $?
     fi
     return 1
@@ -305,10 +323,31 @@ persist_client_host_id() {
 install_report_collector() {
     export REPORT_COLLECTOR_USERNAME="$USERNAME"
     export MONITOR_RAW_BASE="$RAW_BASE"
+    export MONITOR_SERVER_URL="$monitor_url"
+    local monitor_installer="/tmp/install_report_collector.monitor.$$"
+    local monitor_headers="/tmp/install_report_collector.headers.$$"
 
     echo "开始下载最新 report collector 安装脚本..."
-    if wget -O /tmp/install_report_collector.sh "${RAW_BASE}/scripts/client/install/debian.sh"; then
-        REPORT_COLLECTOR_USERNAME="$USERNAME" MONITOR_RAW_BASE="$RAW_BASE" bash /tmp/install_report_collector.sh update
+    if [ -n "$monitor_url" ] && curl -fsSLG \
+        --data-urlencode "path=install/debian.sh" \
+        "${monitor_url%/}/pub/get_client_script" \
+        -D "$monitor_headers" \
+        -o "$monitor_installer" && \
+        grep -qi '^Content-Type: text/plain' "$monitor_headers" && \
+        [ -s "$monitor_installer" ]; then
+        mv -f "$monitor_installer" /tmp/install_report_collector.sh
+        echo "已从云监控服务端获取 report collector 安装脚本。"
+    elif ! wget -O /tmp/install_report_collector.sh "${RAW_BASE}/scripts/client/install/debian.sh"; then
+        rm -f "$monitor_installer" "$monitor_headers"
+        return 1
+    fi
+    rm -f "$monitor_installer" "$monitor_headers"
+
+    if [ -s /tmp/install_report_collector.sh ]; then
+        REPORT_COLLECTOR_USERNAME="$USERNAME" \
+        MONITOR_RAW_BASE="$RAW_BASE" \
+        MONITOR_SERVER_URL="$monitor_url" \
+        bash /tmp/install_report_collector.sh update
         return $?
     fi
     return 1

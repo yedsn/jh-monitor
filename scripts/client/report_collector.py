@@ -14,7 +14,7 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
 
-from get_host_info import get_host_ip, is_pve_machine
+from get_host_info import get_host_display_name, get_host_ip, is_pve_machine
 from get_pve_system_status import build_system_status as build_pve_system_status
 
 DEFAULT_OUTPUT_DIR = os.environ.get(
@@ -139,9 +139,11 @@ def get_host_id():
 
 
 def get_host_meta():
+    panel_title = get_host_display_name()
     return {
         'host_id': get_host_id(),
-        'host_name': socket.gethostname(),
+        'host_name': panel_title,
+        'panel_title': panel_title,
         'host_ip': get_primary_ip()
     }
 

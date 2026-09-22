@@ -16,6 +16,7 @@ REPORT_INDEXES = {
                     'properties': {
                         'host_id': {'type': 'keyword'},
                         'host_name': {'type': 'keyword'},
+                        'panel_title': {'type': 'keyword'},
                         'host_ip': {'type': 'ip'},
                         'host_group': {'type': 'keyword'},
                         'host_status': {'type': 'keyword'},
@@ -60,6 +61,7 @@ REPORT_INDEXES = {
                     'properties': {
                         'host_id': {'type': 'keyword'},
                         'host_name': {'type': 'keyword'},
+                        'panel_title': {'type': 'keyword'},
                         'host_ip': {'type': 'ip'},
                         'host_group': {'type': 'keyword'},
                         'host_status': {'type': 'keyword'},
@@ -417,6 +419,7 @@ REPORT_INDEX_TEMPLATES = {
                         'properties': {
                             'host_id': {'type': 'keyword'},
                             'host_name': {'type': 'keyword'},
+                            'panel_title': {'type': 'keyword'},
                             'host_ip': {'type': 'ip'},
                             'host_group': {'type': 'keyword'},
                             'host_status': {'type': 'keyword'},
@@ -496,6 +499,7 @@ REPORT_INDEX_TEMPLATES = {
                         'properties': {
                             'host_id': {'type': 'keyword'},
                             'host_name': {'type': 'keyword'},
+                            'panel_title': {'type': 'keyword'},
                             'host_ip': {'type': 'ip'},
                             'host_group': {'type': 'keyword'},
                             'host_status': {'type': 'keyword'},

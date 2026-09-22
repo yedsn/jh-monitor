@@ -7,6 +7,11 @@ sys.path.append(os.getcwd() + "/class/plugin")
 import value_tool as value_utils
 
 
+def getCollectedHostName(status_doc):
+    host_doc = value_utils.getNested(status_doc or {}, ['host'], {})
+    return str(host_doc.get('panel_title', '') or '').strip()
+
+
 def estimateCpuCount(status_doc):
     load_avg = value_utils.getNested(status_doc or {}, ['system', 'load'], {})
     load_one = value_utils.safeFloat(load_avg.get('one'), 0)
@@ -20,7 +25,7 @@ def estimateCpuCount(status_doc):
 
 def buildHostInfoFromStatus(host_row, status_doc):
     host_info = {
-        'hostName': host_row.get('host_name', ''),
+        'hostName': getCollectedHostName(status_doc),
         'platform': host_row.get('os', '') or '',
         'platformFamily': '',
         'platformVersion': '',
@@ -246,7 +251,8 @@ def buildHostMetaFromStatusDoc(status_doc):
     host_doc = status_doc.get('host') or {}
     return {
         'host_id': host_doc.get('host_id', ''),
-        'host_name': host_doc.get('host_name', ''),
+        'host_name': host_doc.get('panel_title', ''),
+        'host_remark': '',
         'ip': host_doc.get('host_ip', ''),
         'os': host_doc.get('system_type', ''),
         'is_pve': str(host_doc.get('system_type', '')).strip().lower() == 'pve',
@@ -257,10 +263,14 @@ def buildHostMetaFromStatusDoc(status_doc):
 def buildHostDetailFromStatusDoc(host_row, status_doc):
     add_timestamp = value_utils.safeInt((status_doc or {}).get('add_timestamp'), 0)
     add_time = (status_doc or {}).get('add_time', '')
+    host_remark = host_row.get('host_remark')
+    if host_remark is None:
+        host_remark = host_row.get('host_name', '')
     return {
         'id': add_timestamp,
         'host_id': host_row.get('host_id', ''),
-        'host_name': host_row.get('host_name', ''),
+        'host_name': getCollectedHostName(status_doc),
+        'host_remark': host_remark,
         'host_status': value_utils.parseHostStatus(
             value_utils.getNested(status_doc or {}, ['host', 'host_status'], '')
         ),

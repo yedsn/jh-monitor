@@ -234,6 +234,15 @@ def siteEdate():
         print(str(e))
 
 
+def getCollectedHostNameFromStatus(status_record):
+    if isinstance(status_record, dict):
+        host_doc = status_record.get('host') or {}
+        collected_host_name = str(host_doc.get('panel_title', '') or '').strip()
+        if collected_host_name:
+            return collected_host_name
+    return ''
+
+
 def hostGrowthAlarmTask():
     """资源增长预测和告警"""
     try:
@@ -258,12 +267,14 @@ def hostGrowthAlarmTask():
             print(f"{Fore.BLUE}★ ========= [resourceGrowthAlarm] STARTED - 开始分析资源增长: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(current_time))}{Style.RESET_ALL}")
             
             # 获取主机列表
-            host_list = jh.M('host').field('host_id,host_name').select()
+            host_list = jh.M('host').field('host_id,host_name,ip').select()
 
             if not isinstance(host_list, list):
                 print(f"{Fore.RED}|- 获取主机列表失败，跳过本轮资源增长分析: {host_list}{Style.RESET_ALL}")
                 time.sleep(scan_interval)
                 continue
+
+            latest_status_map = host_status_service_utils.getLatestStatusDocs(host_list)
             
             for host in host_list:
                 if not isinstance(host, dict):
@@ -271,7 +282,7 @@ def hostGrowthAlarmTask():
                     continue
 
                 host_id = host['host_id']
-                host_name = host['host_name']
+                host_name = getCollectedHostNameFromStatus(latest_status_map.get(host_id))
                 
                 # 检查上次告警时间
                 last_alarm = sql.table('host_alarm').where('host_id=? AND alarm_type=?', 
@@ -311,7 +322,7 @@ def hostGrowthAlarmTask():
                 # 如果没有最新记录，则跳过
                 if not latest_record:
                     continue
-                
+
                 # 分析内存和磁盘
                 memory_alarm = None
                 disk_alarm = None

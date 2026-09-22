@@ -10,7 +10,7 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
 
-from get_host_info import get_host_ip, is_pve_machine
+from get_host_info import get_host_display_name, get_host_ip, is_pve_machine
 from get_host_usage import get_net_info
 from get_pve_hardware_report import DEFAULT_THRESHOLDS, HardwareReporter
 
@@ -141,9 +141,11 @@ def _force_float_sensor_values(pve_data):
 
 def build_system_status(host_meta=None):
     if host_meta is None:
+        panel_title = get_host_display_name()
         host_meta = {
             'host_id': socket.gethostname(),
-            'host_name': socket.gethostname(),
+            'host_name': panel_title,
+            'panel_title': panel_title,
             'host_ip': get_host_ip() or '127.0.0.1'
         }
 
@@ -184,6 +186,7 @@ def build_system_status(host_meta=None):
         'host': {
             'host_id': host_meta['host_id'],
             'host_name': host_meta['host_name'],
+            'panel_title': host_meta.get('panel_title', ''),
             'host_ip': host_meta['host_ip'],
             'host_group': '',
             'host_status': 'running',

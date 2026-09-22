@@ -555,23 +555,33 @@ function getWeb(page, search, host_group_id) {
       const { net_info, load_avg } = data.data[i];
       const hostName = normalizeText(data.data[i].host_name);
       const hostNameDisplay = displayText(hostName);
+      const hostNameHtml = escapeHtml(hostNameDisplay);
+      const hostRemark = normalizeText(data.data[i].host_remark);
+      const hostRemarkDisplay = displayText(hostRemark);
+      const hostRemarkHtml = escapeHtml(hostRemarkDisplay);
       const hostIp = normalizeText(data.data[i].ip);
       const hostIpDisplay = displayText(hostIp);
+      const hostIpHtml = escapeHtml(hostIpDisplay);
+      const hostIdEncoded = encodeURIComponent(normalizeText(data.data[i].host_id)).replace(/'/g, '%27');
+      const hostRemarkEncoded = encodeURIComponent(hostRemark).replace(/'/g, '%27');
       const hostGroupName = displayText(data.data[i].host_group_name);
       const hostStatus = normalizeText(data.data[i].host_status);
       const hostEdate = normalizeText(data.data[i].edate);
       const hostAddtime = normalizeText(data.data[i].addtime);
       const detailAddtime = toNumber(data.data[i].detail_addtime, 0);
       const detailAddtimeDisplay = detailAddtime > 0 ? displayText(toTime(detailAddtime)) : '--';
-      // 主机名称
+      // 主机信息
       let name = '';
       name += `
-      <div class="flex align-center">
-          <span>${hostNameDisplay}</span>
-          <span style='margin-left: 5px;' onclick="openEditHostName('${data.data[i].host_id}','${hostName}')\" title='修改名称' class='text-2xl btlink opacity-60 hover:opacity-100 cursor-pointer glyphicon glyphicon-edit'></span>
+      <div class="host-name-line" title="主机名称：${hostNameHtml}">
+          <span class="host-info-label">名称</span><span class="host-info-value">${hostNameHtml}</span>
       </div>
-      <div>
-          <span>${hostIpDisplay}</span>
+      <div class="host-name-line" title="备注名称：${hostRemarkHtml}">
+          <span class="host-info-label">备注</span><span class="host-info-value">${hostRemarkHtml}</span>
+          <span style='margin-left: 5px;' onclick="openEditHostName(decodeURIComponent('${hostIdEncoded}'),decodeURIComponent('${hostRemarkEncoded}'))" title='修改备注名称' class='text-2xl btlink opacity-60 hover:opacity-100 cursor-pointer glyphicon glyphicon-edit'></span>
+      </div>
+      <div class="host-name-line" title="IP：${hostIpHtml}">
+          <span class="host-info-label">IP</span><span class="host-info-value">${hostIpHtml}</span>
           <span style='margin-left: 5px;' onclick="copyText('${hostIp}')\" title='复制IP' class='text-2xl btlink opacity-60 hover:opacity-100 cursor-pointer glyphicon glyphicon-copy'></span>
       </div>
       `
@@ -1035,12 +1045,14 @@ function openEditHostGroup(id,host_group_name){
 
 /**
  * 
- * 修改主机名称
+ * 修改备注名称
  */
 function openEditHostName(host_id, host_name) {
+  var hostNameHtml = escapeHtml(displayText(host_name));
+  var hostNameValue = escapeHtml(host_name);
   layer.open({
     type: 1,
-    title: `编辑主机名称【${host_name}】`,
+    title: `编辑备注名称【${hostNameHtml}】`,
     area: '440px',
     closeBtn: 1,
     shift: 0,
@@ -1048,9 +1060,9 @@ function openEditHostName(host_id, host_name) {
     <form class='bt-form pd20 pb70' id='editHostNameForm'>
       <div class="p-10 text-xl">
         <div class='line'>
-          <span class='tname'>主机名称</span>
+          <span class='tname'>备注名称</span>
           <div class='info-r c4'>
-            <input id='Wbeizhu' class='bt-input-text' type='text' name='host_name' placeholder='主机名称' style='width:268px' value='${host_name}'/>
+            <input id='Wbeizhu' class='bt-input-text' type='text' name='host_remark' placeholder='备注名称' style='width:268px' value="${hostNameValue}"/>
             <input hidden type='text' name='host_id' hidden value='${host_id}'/>
           </div>
         </div>
@@ -1067,7 +1079,7 @@ function openEditHostName(host_id, host_name) {
 }
 
 /**
- * 修改主机名称
+ * 修改备注名称
  */
 function submitEditHostName() {
   let editHostNameForm = $('#editHostNameForm').serialize();
@@ -1422,6 +1434,7 @@ function detailHostSummary(host_id, name, msg, status) {
       <div class="p-5">
           <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
               <div class="overflow-hidden whitespace-nowrap text-ellipsis"><span class="text-gray-400 inline-block w-32">主机名称: </span><span class="hostName"></span></div>
+              <div class="overflow-hidden whitespace-nowrap text-ellipsis"><span class="text-gray-400 inline-block w-32">备注名称: </span><span class="hostRemark"></span></div>
               <div class="overflow-hidden whitespace-nowrap text-ellipsis"><span class="text-gray-400 inline-block w-32">IP地址:</span><span class="ip"></span></div>
               <div class="overflow-hidden whitespace-nowrap text-ellipsis"><span class="text-gray-400 inline-block w-32">操作系统:</span><span class="platform"></span></div>
               <div hidden class="overflow-hidden whitespace-nowrap text-ellipsis"><span class="text-gray-400 inline-block w-32">运行天数:</span><span class="runDay"></span></div>
@@ -1932,6 +1945,7 @@ function getDetailHostSummaryData(host_id) {
     let { ip, host_info, cpu_info, mem_info, net_info, load_avg, process_rank = [], ssh_user_list = [] } = host_detail;
     // 主机信息
     $('.detailHostSummary .hostName').text(host_detail['host_name']);
+    $('.detailHostSummary .hostRemark').text(host_detail['host_remark'] || '--');
     $('.detailHostSummary .ip').text(ip);
     $('.detailHostSummary .platform').text(`${host_info['platform']} ${host_info['platformVersion']}`).attr('title', `${host_info['platform']} ${host_info['platformVersion']}`);
     $('.detailHostSummary .runDay').text(host_info['runDay']);

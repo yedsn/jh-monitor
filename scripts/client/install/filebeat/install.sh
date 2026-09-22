@@ -2,6 +2,7 @@
 DEFAULT_RAW_BASE="https://raw.githubusercontent.com/jianghujs/jh-monitor/master"
 CN_RAW_BASE="https://gitee.com/jianghujs/jh-monitor/raw/master"
 RAW_BASE="$DEFAULT_RAW_BASE"
+MONITOR_SERVER_URL="${MONITOR_SERVER_URL:-}"
 if [ "$1" == "cn" ]; then
   RAW_BASE="$CN_RAW_BASE"
 fi
@@ -121,6 +122,31 @@ escape_sed_replacement() {
   printf "%s" "$1" | sed -e 's/[\/&]/\\&/g'
 }
 
+download_config_file() {
+  local relative_path="$1"
+  local fallback_url="$2"
+  local target_file="$3"
+  local temp_file="${target_file}.download.$$"
+  local header_file="${target_file}.headers.$$"
+
+  if [ -n "$MONITOR_SERVER_URL" ] && curl -fsSLG \
+      --data-urlencode "path=${relative_path}" \
+      "${MONITOR_SERVER_URL%/}/pub/get_client_script" \
+      -D "$header_file" \
+      -o "$temp_file" && \
+      grep -qi '^Content-Type: text/plain' "$header_file" && \
+      [ -s "$temp_file" ]; then
+    mv -f "$temp_file" "$target_file"
+    _log_detail "已从云监控服务端获取配置" path="$relative_path"
+  elif wget -O "$temp_file" "$fallback_url" && [ -s "$temp_file" ]; then
+    mv -f "$temp_file" "$target_file"
+  else
+    rm -f "$temp_file" "$header_file"
+    return 1
+  fi
+  rm -f "$temp_file" "$header_file"
+}
+
 _log_sep
 _log_start "开始安装 filebeat" version="8.11.3"
 
@@ -147,7 +173,10 @@ if [ -d /etc/pve ]; then
 fi
 
 _log_step "下载主配置" type="$config_type" file="filebeat.${config_type}.yml"
-wget -O /tmp/filebeat.yml "${RAW_BASE}/scripts/client/install/filebeat/config/filebeat.${config_type}.yml"
+download_config_file \
+  "install/filebeat/config/filebeat.${config_type}.yml" \
+  "${RAW_BASE}/scripts/client/install/filebeat/config/filebeat.${config_type}.yml" \
+  /tmp/filebeat.yml
 if [ ! -s /tmp/filebeat.yml ]; then
   _log_fail "下载主配置失败" type="$config_type"
   exit 1
@@ -189,7 +218,10 @@ INPUTS_DIR="/etc/filebeat/inputs.d"
 mkdir -p "$INPUTS_DIR"
 HOST_INPUT_FILE="${INPUTS_DIR}/host-${config_type}.yml"
 _log_step "下载主机 inputs 配置" type="$config_type" file="host-${config_type}.yml"
-wget -O /tmp/host-inputs.yml "${RAW_BASE}/scripts/client/install/filebeat/config/inputs.d/host-${config_type}.yml"
+download_config_file \
+  "install/filebeat/config/inputs.d/host-${config_type}.yml" \
+  "${RAW_BASE}/scripts/client/install/filebeat/config/inputs.d/host-${config_type}.yml" \
+  /tmp/host-inputs.yml
 if [ ! -s /tmp/host-inputs.yml ]; then
   _log_fail "下载主机 inputs 配置失败" type="$config_type"
   exit 1
@@ -236,7 +268,9 @@ run_filebeat_setup() {
   _log_detail "filebeat setup 完成"
 }
 
-run_filebeat_setup || exit 1
+if ! run_filebeat_setup; then
+  _log_step "filebeat setup 未完成，继续重启采集服务" log="/tmp/filebeat_setup.log"
+fi
 
 _log_step "启动 filebeat 服务"
 service filebeat restart

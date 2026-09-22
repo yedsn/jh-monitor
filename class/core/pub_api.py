@@ -26,7 +26,7 @@ import psutil
 from flask import request
 
 
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, send_file
 import jh
 import time
 
@@ -36,6 +36,39 @@ c_api = config_api()
 app = Flask(__name__)
 
 class pub_api:
+    CLIENT_SCRIPT_FILES = {
+        'install.sh',
+        'install/debian.sh',
+        'install/report_collector_cron.sh',
+        'install/filebeat/install.sh',
+        'install/filebeat/config/filebeat.debian.yml',
+        'install/filebeat/config/filebeat.pve.yml',
+        'install/filebeat/config/inputs.d/host-debian.yml',
+        'install/filebeat/config/inputs.d/host-pve.yml',
+        'report_collector.py',
+        'get_debian_system_status.py',
+        'get_pve_system_status.py',
+        'get_host_usage.py',
+        'get_host_info.py',
+        'get_pve_hardware_report.py',
+    }
+
+    def _getClientScriptPath(self, relative_path):
+        relative_path = str(relative_path or '').strip().lstrip('/')
+        if relative_path not in self.CLIENT_SCRIPT_FILES:
+            return ''
+        script_root = os.path.realpath(os.path.join(os.getcwd(), 'scripts', 'client'))
+        script_path = os.path.realpath(os.path.join(script_root, relative_path))
+        if not script_path.startswith(script_root + os.sep) or not os.path.isfile(script_path):
+            return ''
+        return script_path
+
+    def getClientScriptApi(self):
+        script_path = self._getClientScriptPath(request.args.get('path', ''))
+        if script_path == '':
+            return jh.returnJson(False, '客户端脚本不存在'), 404
+        return send_file(script_path, mimetype='text/plain')
+
     def getPubKeyApi(self):
         if os.path.exists('/root/.ssh/id_rsa.pub'):
             return jh.returnJson(True, 'ok', jh.readFile('/root/.ssh/id_rsa.pub'))

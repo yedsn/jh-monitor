@@ -51,6 +51,7 @@ from report_state import build_delivery_state, build_validation_state, normalize
 ES_SERVICE_DIR = os.path.join(ROOT_DIR, 'class', 'es', 'service')
 if ES_SERVICE_DIR not in sys.path:
     sys.path.insert(0, ES_SERVICE_DIR)
+import host_status_service as host_status_service_utils
 import monitor_task_event_service as monitor_task_event_service_utils
 
 try:
@@ -358,6 +359,49 @@ class HostReportAnalyser(object):
             'start_timestamp': int(start_dt.timestamp()),
             'end_timestamp': int(end_dt.timestamp()),
         }
+
+    def _get_collected_host_name(self, status_docs):
+        """从最新系统状态文档读取采集端上报的主机名称。"""
+        sorted_docs = sorted(
+            [doc for doc in (status_docs or []) if isinstance(doc, dict)],
+            key=lambda item: value_tool.safeInt(
+                item.get('add_timestamp', 0),
+                value_tool.parseTime(item.get('add_time', ''))
+            )
+        )
+        for status_doc in reversed(sorted_docs):
+            host_name = str(value_tool.getNested(status_doc, ['host', 'panel_title'], '') or '').strip()
+            if host_name:
+                return host_name
+        return ''
+
+    def _with_collected_host_name(self, host_row, status_docs=None, resolved=False):
+        """复制主机数据，并将 host_name 替换为采集名称。"""
+        report_host_row = dict(host_row or {})
+        host_remark = report_host_row.get('host_remark')
+        if host_remark is None:
+            host_remark = report_host_row.get('host_name', '')
+        report_host_row['host_remark'] = host_remark
+        collected_host_name = self._get_collected_host_name(status_docs)
+        report_host_row['collected_host_name'] = collected_host_name
+        report_host_row['host_name'] = collected_host_name
+        report_host_row['_collected_host_name_resolved'] = bool(resolved)
+        return report_host_row
+
+    def _resolve_report_host_rows(self, host_rows, raw_groups=None):
+        """每次生成日报前，统一读取 ES 最新状态中的主机名称。"""
+        latest_status_map = host_status_service_utils.getLatestStatusDocs(host_rows or [])
+
+        resolved_rows = []
+        for host_row in host_rows or []:
+            host_id = str(host_row.get('host_id', '') or '').strip()
+            latest_status_doc = latest_status_map.get(host_id)
+            resolved_rows.append(self._with_collected_host_name(
+                host_row,
+                [latest_status_doc] if latest_status_doc else [],
+                resolved=True
+            ))
+        return resolved_rows
 
     def _get_doc(self, index_name, doc_id):
         """兼容旧脚本：统一读取并返回 ES 文档的 _source。"""
@@ -1461,7 +1505,7 @@ class HostReportAnalyser(object):
             summary_tips.append("<span style='color: green;'>服务运行正常，继续保持！</span>")
 
         return {
-            'title': host_name or jh.getConfig('title'),
+            'title': host_name,
             'ip': host_ip,
             'report_time': latest_doc.get('add_time', '') if isinstance(latest_doc, dict) and latest_doc.get('add_time') else window['report_time'],
             'start_time': window['start_time'],
@@ -1776,6 +1820,8 @@ class HostReportAnalyser(object):
 
     def build_single_host_report(self, host_row, host_group, window):
         """基于单台主机原始数据生成单机报告文档。"""
+        if not host_row.get('_collected_host_name_resolved'):
+            host_row = self._resolve_report_host_rows([host_row])[0]
         host_id = host_row.get('host_id', '')
 
         host_name = host_row.get('host_name', '')
@@ -1962,6 +2008,18 @@ class HostReportAnalyser(object):
             return '、'.join(labels)
         return '{0}等 {1} 台'.format('、'.join(labels[:3]), len(labels))
 
+    def _apply_collected_names_to_monitor_tasks(self, monitor_task_overview, host_rows):
+        collected_host_map = {
+            str(row.get('host_id', '') or ''): str(row.get('host_name', '') or '')
+            for row in host_rows
+            if row.get('host_id')
+        }
+        for task_item in monitor_task_overview:
+            task_host_id = str(task_item.get('host_id', '') or '')
+            if task_host_id in collected_host_map:
+                task_item['host_name'] = collected_host_map[task_host_id]
+        return monitor_task_overview
+
     def build_overview_report(self, host_rows, single_documents, window):
         """汇总所有单机报告，生成全局概览文档。"""
         online_count = 0
@@ -2045,6 +2103,7 @@ class HostReportAnalyser(object):
 
         # 监控任务总览：生成报告时实时查询 ES 最新事件，避免发送旧的 SQLite 状态。
         monitor_task_overview = self._build_monitor_task_overview(self.now_ts)
+        self._apply_collected_names_to_monitor_tasks(monitor_task_overview, host_rows)
         ha_overview = self._build_ha_management_overview() if self.is_ha_report_enabled() else {}
 
         overview_summary_messages = []
@@ -2223,6 +2282,7 @@ class HostReportAnalyser(object):
         load_raw_start_ts = time.time()
         self.log('[report-analysis] load raw groups start report_date={0} host_total={1}'.format(window['report_date'], len(host_rows)))
         raw_groups = self.load_raw_groups(host_rows, window)
+        host_rows = self._resolve_report_host_rows(host_rows, raw_groups)
         self.log('[report-analysis] load raw groups done report_date={0} host_total={1} cost={2:.3f}s'.format(
             window['report_date'],
             len(host_rows),

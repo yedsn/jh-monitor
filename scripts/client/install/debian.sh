@@ -8,6 +8,7 @@ export PATH
 ACTION="${1:-install}"
 USERNAME="${REPORT_COLLECTOR_USERNAME:-ansible_user}"
 RAW_BASE="${MONITOR_RAW_BASE:-https://raw.githubusercontent.com/jianghujs/jh-monitor/master}"
+MONITOR_SERVER_URL="${MONITOR_SERVER_URL:-}"
 PYTHON_BIN="${PYTHON_BIN:-$(command -v python3 || true)}"
 SCRIPT_HOME="/home/${USERNAME}/jh-monitor-scripts"
 DATA_HOME="/home/${USERNAME}/jh-monitor-data"
@@ -52,11 +53,26 @@ prepare_dirs() {
 fetch_or_copy() {
   local name="$1"
   local target_file="${SCRIPT_HOME}/${name}"
+  local temp_file="${target_file}.download.$$"
+  local header_file="${target_file}.headers.$$"
 
   log "下载最新脚本: ${name}"
-  if ! wget -O "$target_file" "${RAW_BASE}/scripts/client/${name}"; then
+  if [ -n "$MONITOR_SERVER_URL" ] && curl -fsSLG \
+      --data-urlencode "path=${name}" \
+      "${MONITOR_SERVER_URL%/}/pub/get_client_script" \
+      -D "$header_file" \
+      -o "$temp_file" && \
+      grep -qi '^Content-Type: text/plain' "$header_file" && \
+      [ -s "$temp_file" ]; then
+    mv -f "$temp_file" "$target_file"
+    log "已从云监控服务端获取: ${name}"
+  elif wget -O "$temp_file" "${RAW_BASE}/scripts/client/${name}" && [ -s "$temp_file" ]; then
+    mv -f "$temp_file" "$target_file"
+  else
+    rm -f "$temp_file" "$header_file"
     fail "下载 ${name} 失败"
   fi
+  rm -f "$temp_file" "$header_file"
 
   chmod 755 "$target_file"
   chown "$USERNAME:$USERNAME" "$target_file"
@@ -65,11 +81,26 @@ fetch_or_copy() {
 run_cron_installer() {
   local cron_action="${1:-update}"
   local cron_script="/tmp/${CRON_HELPER_NAME}"
+  local temp_file="${cron_script}.download.$$"
+  local header_file="${cron_script}.headers.$$"
 
   log "下载最新定时任务安装脚本: ${CRON_HELPER_NAME}"
-  if ! wget -O "$cron_script" "${RAW_BASE}/scripts/client/install/${CRON_HELPER_NAME}"; then
+  if [ -n "$MONITOR_SERVER_URL" ] && curl -fsSLG \
+      --data-urlencode "path=install/${CRON_HELPER_NAME}" \
+      "${MONITOR_SERVER_URL%/}/pub/get_client_script" \
+      -D "$header_file" \
+      -o "$temp_file" && \
+      grep -qi '^Content-Type: text/plain' "$header_file" && \
+      [ -s "$temp_file" ]; then
+    mv -f "$temp_file" "$cron_script"
+    log "已从云监控服务端获取: ${CRON_HELPER_NAME}"
+  elif wget -O "$temp_file" "${RAW_BASE}/scripts/client/install/${CRON_HELPER_NAME}" && [ -s "$temp_file" ]; then
+    mv -f "$temp_file" "$cron_script"
+  else
+    rm -f "$temp_file" "$header_file"
     fail "下载 ${CRON_HELPER_NAME} 失败"
   fi
+  rm -f "$temp_file" "$header_file"
 
   REPORT_COLLECTOR_USERNAME="$USERNAME" \
   REPORT_COLLECTOR_OUTPUT_DIR="$DATA_DIR" \

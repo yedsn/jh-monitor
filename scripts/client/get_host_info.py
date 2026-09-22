@@ -3,6 +3,24 @@ import socket
 import subprocess
 import json
 
+JH_PANEL_CONFIG_FILE = '/www/server/jh-panel/data/json/config.json'
+
+
+def get_jh_panel_title():
+    try:
+        if not os.path.exists(JH_PANEL_CONFIG_FILE):
+            return ''
+        with open(JH_PANEL_CONFIG_FILE, 'r') as fp:
+            config = json.load(fp)
+        return str(config.get('title', '') or '').strip()
+    except Exception:
+        return ''
+
+
+def get_host_display_name():
+    return get_jh_panel_title()
+
+
 def get_host_ip():
     # 获取主机IP地址
     hostname = socket.gethostname()
@@ -105,7 +123,7 @@ def get_pve_url():
 
 def main():
     host_info = {
-        "hostName": socket.gethostname(),
+        "hostName": get_host_display_name(),
         "kernelArch": os.uname().machine,
         "kernelVersion": os.uname().release,
         "os": get_os_info(),
