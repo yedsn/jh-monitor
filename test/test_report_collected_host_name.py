@@ -41,13 +41,13 @@ def main():
     ]
 
     resolved = analyser._with_collected_host_name(host_row, status_docs, resolved=True)
-    assert resolved['host_name'] == 'prod-gateway-01', resolved
+    assert resolved['host_name'] == '机房入口机', resolved
     assert resolved['collected_host_name'] == 'prod-gateway-01', resolved
     assert resolved['host_remark'] == '机房入口机', resolved
     assert host_row['host_name'] == '机房入口机', host_row
 
     fallback = analyser._with_collected_host_name(host_row, [])
-    assert fallback['host_name'] == '', fallback
+    assert fallback['host_name'] == '机房入口机', fallback
 
     analyser.es_available = True
     original_get_latest_status_docs = report_analyser.host_status_service_utils.getLatestStatusDocs
@@ -74,7 +74,8 @@ def main():
     finally:
         report_analyser.host_status_service_utils.getLatestStatusDocs = original_get_latest_status_docs
 
-    assert resolved_rows[0]['host_name'] == 'prod-gateway-latest', resolved_rows
+    assert resolved_rows[0]['host_name'] == '机房入口机', resolved_rows
+    assert resolved_rows[0]['collected_host_name'] == 'prod-gateway-latest', resolved_rows
     assert resolved_rows[0]['host_remark'] == '机房入口机', resolved_rows
     assert resolved_rows[0]['_collected_host_name_resolved'] is True
 
@@ -82,7 +83,14 @@ def main():
         'host': {'host_name': 'legacy-hostname'},
         'add_timestamp': 400
     }])
-    assert legacy_only['host_name'] == '', legacy_only
+    assert legacy_only['host_name'] == '机房入口机', legacy_only
+
+    no_remark = analyser._with_collected_host_name({
+        'host_id': 'H_TEST',
+        'host_name': '',
+        'ip': '10.0.0.10'
+    }, status_docs)
+    assert no_remark['host_name'] == 'prod-gateway-01', no_remark
 
     monitor_tasks = [{
         'host_id': 'H_TEST',
@@ -95,7 +103,7 @@ def main():
         monitor_tasks,
         [analyser._with_collected_host_name(host_row, [], resolved=True)]
     )
-    assert monitor_tasks[0]['host_name'] == '', monitor_tasks
+    assert monitor_tasks[0]['host_name'] == '机房入口机', monitor_tasks
 
     print('report collected host name: ok')
 

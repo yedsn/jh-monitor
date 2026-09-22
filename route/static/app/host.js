@@ -554,11 +554,15 @@ function getWeb(page, search, host_group_id) {
 
       const { net_info, load_avg } = data.data[i];
       const hostName = normalizeText(data.data[i].host_name);
-      const hostNameDisplay = displayText(hostName);
-      const hostNameHtml = escapeHtml(hostNameDisplay);
       const hostRemark = normalizeText(data.data[i].host_remark);
-      const hostRemarkDisplay = displayText(hostRemark);
-      const hostRemarkHtml = escapeHtml(hostRemarkDisplay);
+      const primaryHostName = hostName || hostRemark;
+      const primaryHostNameHtml = escapeHtml(displayText(primaryHostName));
+      const hostRemarkHtml = escapeHtml(hostRemark);
+      const showHostRemark = hostName && hostRemark;
+      const hostRemarkSuffixHtml = showHostRemark ? `（${hostRemarkHtml}）` : '';
+      const hostNameTitle = escapeHtml(
+        showHostRemark ? `${hostName}（${hostRemark}）` : (primaryHostName || '--')
+      );
       const hostIp = normalizeText(data.data[i].ip);
       const hostIpDisplay = displayText(hostIp);
       const hostIpHtml = escapeHtml(hostIpDisplay);
@@ -573,16 +577,12 @@ function getWeb(page, search, host_group_id) {
       // 主机信息
       let name = '';
       name += `
-      <div class="host-name-line" title="主机名称：${hostNameHtml}">
-          <span class="host-info-label">名称</span><span class="host-info-value">${hostNameHtml}</span>
-      </div>
-      <div class="host-name-line" title="备注名称：${hostRemarkHtml}">
-          <span class="host-info-label">备注</span><span class="host-info-value">${hostRemarkHtml}</span>
-          <span style='margin-left: 5px;' onclick="openEditHostName(decodeURIComponent('${hostIdEncoded}'),decodeURIComponent('${hostRemarkEncoded}'))" title='修改备注名称' class='text-2xl btlink opacity-60 hover:opacity-100 cursor-pointer glyphicon glyphicon-edit'></span>
+      <div class="host-name-line" title="名称：${hostNameTitle}">
+          <span class="host-info-label">名称</span>
+          <span class="host-info-value">${primaryHostNameHtml}${hostRemarkSuffixHtml}<span style='margin-left: 5px;' onclick="openEditHostName(decodeURIComponent('${hostIdEncoded}'),decodeURIComponent('${hostRemarkEncoded}'))" title='修改备注名称' class='text-2xl btlink opacity-60 hover:opacity-100 cursor-pointer glyphicon glyphicon-edit'></span></span>
       </div>
       <div class="host-name-line" title="IP：${hostIpHtml}">
-          <span class="host-info-label">IP</span><span class="host-info-value">${hostIpHtml}</span>
-          <span style='margin-left: 5px;' onclick="copyText('${hostIp}')\" title='复制IP' class='text-2xl btlink opacity-60 hover:opacity-100 cursor-pointer glyphicon glyphicon-copy'></span>
+          <span class="host-info-label">IP</span><span class="host-info-value">${hostIpHtml}<span style='margin-left: 5px;' onclick="copyText('${hostIp}')\" title='复制IP' class='text-2xl btlink opacity-60 hover:opacity-100 cursor-pointer glyphicon glyphicon-copy'></span></span>
       </div>
       `
 
@@ -813,7 +813,7 @@ function getWeb(page, search, host_group_id) {
       
 
 			body = "<tr data-host-row-id='" + data.data[i].id + "'><td class='text-center host-sticky-left host-sticky-left-1'><span class='host-sort-handle' aria-hidden='true'><i></i><i></i><i></i></span></td>\
-					<td class='host-sticky-left host-sticky-left-2'><input type='checkbox' name='id' title='"+hostNameDisplay+"' onclick='checkSelect();' value='" + data.data[i].id + "'></td>\
+					<td class='host-sticky-left host-sticky-left-2'><input type='checkbox' name='id' title='"+hostNameTitle+"' onclick='checkSelect();' value='" + data.data[i].id + "'></td>\
 					<td class='host-sticky-left host-sticky-left-3'>" + name + "</td>\
 					<td class='host-sticky-left host-sticky-left-4'>" + status + "</td>\
 					<td class='host-sticky-left host-sticky-left-5'>" + host_group + "</td>\

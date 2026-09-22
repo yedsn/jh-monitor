@@ -234,7 +234,10 @@ def siteEdate():
         print(str(e))
 
 
-def getCollectedHostNameFromStatus(status_record):
+def getCollectedHostNameFromStatus(status_record, host_remark=''):
+    host_remark = str(host_remark or '').strip()
+    if host_remark:
+        return host_remark
     if isinstance(status_record, dict):
         host_doc = status_record.get('host') or {}
         collected_host_name = str(host_doc.get('panel_title', '') or '').strip()
@@ -282,7 +285,10 @@ def hostGrowthAlarmTask():
                     continue
 
                 host_id = host['host_id']
-                host_name = getCollectedHostNameFromStatus(latest_status_map.get(host_id))
+                host_name = getCollectedHostNameFromStatus(
+                    latest_status_map.get(host_id),
+                    host.get('host_name', '')
+                )
                 
                 # 检查上次告警时间
                 last_alarm = sql.table('host_alarm').where('host_id=? AND alarm_type=?', 

@@ -57,7 +57,7 @@
 							<colgroup>
 								<col style="width: 36px;">
 								<col style="width: 30px;">
-								<col style="width: 180px;">
+									<col style="width: 280px;">
 								<col style="width: 80px;">
 								<col style="width: 80px;">
 								<col style="width: 120px;">
@@ -75,7 +75,7 @@
 								<tr>
 									<th class="text-center host-sticky-left host-sticky-left-1" width="36" title="拖动排序"></th>
 									<th class="host-sticky-left host-sticky-left-2" width="30"><input type="checkbox" onclick="checkSelect();" id="setBox"></th>
-									<th class="cursor: pointer text-center host-sticky-left host-sticky-left-3" width="180">主机信息</th>
+									<th class="cursor: pointer text-center host-sticky-left host-sticky-left-3" width="280">主机信息</th>
 									<th class="cursor: pointer text-center host-sticky-left host-sticky-left-4" width="80">状态</th>
 									<th class="cursor: pointer text-center host-sticky-left host-sticky-left-5" width="80">分组名称</th>
 									<th class="cursor: pointer text-center" width="120" onclick="listOrder('load','host',this)">负载<span hidden class="glyphicon glyphicon-triangle-top" style="margin-left:5px;color:#bbb"></span></th>
@@ -105,7 +105,7 @@
 <script type="text/javascript" src="/static/laydate/laydate.js?v={{config.version}}"></script>
 <script type="text/javascript" src="/static/js/nunjucks.min.js?v={{config.version}}"></script>
 <script type="text/javascript" src="/static/util/nunjuck.js?v={{config.version}}"></script>
-<script type="text/javascript" src="/static/app/host.js?v={{config.version}}.20260919-host-name-2"></script>
+<script type="text/javascript" src="/static/app/host.js?v={{config.version}}.20260922-host-remark-4"></script>
 <script type="text/javascript">		
 setTimeout(function(){
 	getWeb(1);
@@ -187,7 +187,7 @@ setTimeout(function(){
     background: #e6e6e6;
  }
  .host-list-table {
-    min-width: 1576px;
+    min-width: 1776px;
     border: 0 none;
     table-layout: fixed;
  }
@@ -223,10 +223,10 @@ setTimeout(function(){
     left: 66px;
  }
  .host-list-table .host-sticky-left-4 {
-    left: 246px;
+    left: 346px;
  }
  .host-list-table .host-sticky-left-5 {
-    left: 326px;
+    left: 426px;
     box-shadow: 10px 0 12px -12px rgba(0, 0, 0, 0.35);
  }
  .host-name-line {
@@ -242,9 +242,9 @@ setTimeout(function(){
  .host-info-value {
     flex: 1 1 auto;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
  }
  .host-list-table .host-action-col {
     position: sticky;

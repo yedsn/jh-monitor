@@ -21,6 +21,16 @@ def main():
             }
         }
     ) == 'prod-db-01'
+    assert getCollectedHostNameFromStatus(
+        {
+            'host': {
+                'host_name': 'system-db-01',
+                'panel_title': 'prod-db-01'
+            }
+        },
+        '数据库主机'
+    ) == '数据库主机'
+    assert getCollectedHostNameFromStatus({}, '旧机器备注') == '旧机器备注'
     assert getCollectedHostNameFromStatus({}) == ''
     assert getCollectedHostNameFromStatus(None) == ''
     assert getCollectedHostNameFromStatus({

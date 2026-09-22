@@ -376,20 +376,21 @@ class HostReportAnalyser(object):
         return ''
 
     def _with_collected_host_name(self, host_row, status_docs=None, resolved=False):
-        """复制主机数据，并将 host_name 替换为采集名称。"""
+        """复制主机数据，并按备注优先规则生成报告主机名称。"""
         report_host_row = dict(host_row or {})
         host_remark = report_host_row.get('host_remark')
         if host_remark is None:
             host_remark = report_host_row.get('host_name', '')
+        host_remark = str(host_remark or '').strip()
         report_host_row['host_remark'] = host_remark
         collected_host_name = self._get_collected_host_name(status_docs)
         report_host_row['collected_host_name'] = collected_host_name
-        report_host_row['host_name'] = collected_host_name
+        report_host_row['host_name'] = host_remark or collected_host_name
         report_host_row['_collected_host_name_resolved'] = bool(resolved)
         return report_host_row
 
     def _resolve_report_host_rows(self, host_rows, raw_groups=None):
-        """每次生成日报前，统一读取 ES 最新状态中的主机名称。"""
+        """每次生成日报前，按备注优先规则解析主机名称。"""
         latest_status_map = host_status_service_utils.getLatestStatusDocs(host_rows or [])
 
         resolved_rows = []
@@ -2009,6 +2010,7 @@ class HostReportAnalyser(object):
         return '{0}等 {1} 台'.format('、'.join(labels[:3]), len(labels))
 
     def _apply_collected_names_to_monitor_tasks(self, monitor_task_overview, host_rows):
+        """将日报最终选定的主机名称同步到监控任务摘要。"""
         collected_host_map = {
             str(row.get('host_id', '') or ''): str(row.get('host_name', '') or '')
             for row in host_rows
