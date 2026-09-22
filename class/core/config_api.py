@@ -39,7 +39,7 @@ import host_status_service as host_status_service_utils
 
 class config_api:
 
-    __version = '1.1.12'
+    __version = '1.1.13'
     __api_addr = 'data/api.json'
     __report_config_addr = 'data/report_config.json'
     __es_config_addr = 'data/es.json'
